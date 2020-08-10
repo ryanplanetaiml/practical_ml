@@ -1,0 +1,77 @@
+---
+title: "Week4_Assignment"
+author: "Ryan"
+date: "8/10/2020"
+output: html_document
+---
+
+```{R}
+## Initialization: Load mandatory libraries 
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+```{R}
+## Prepare data from the server
+## Download from the server - parse by csv reader
+org_train <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"))
+org_test <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))
+dim(org_train)
+dim(org_test)
+```
+
+```{R}
+## Data Partitioning
+in_train <- createDataPartition(org_train$classe, p=0.65, list=FALSE)
+train_data_unc <- org_train[in_train, ]
+test_data_unc <- org_train[-in_train, ]
+dim(train_data_unc)
+dim(test_data_unc)
+```
+
+```{R}
+## Cleansing: Near zero var
+nzv_val <- nearZeroVar(train_data_unc)
+## Set only negative nzv_val
+nzv_train <- train_data_unc[,-nzv_val]
+nzv_test <- test_data_unc[,-nzv_val]
+dim(nzv_train)
+dim(nzv_test)
+```
+
+```{R}
+## Cleansing: NA
+## 
+na_val <- sapply(nzv_train, function(x) mean(is.na(x))) > 0.95
+## Set only if not na_val
+set_train <- nzv_train[,na_val==FALSE]
+set_test <- nzv_test[,na_val==FALSE]
+dim(set_train)
+dim(set_test)
+```
+
+```{R}
+## DTM(Decision Tree Model)
+DTM_modFit <- train(classe ~ ., data = set_train, method="rpart")
+## Do prediction
+DTM_prediction <- predict(DTM_modFit, set_test)
+confusionMatrix(as.factor(DTM_prediction), as.factor(set_test$classe))
+```
+
+```{R}
+## Random Forest
+RF_fit <- train(classe ~ ., data = set_train, ntree=100, method="rf")
+## Do prediction
+RF_predict <- predict(RF_fit, set_test)
+confusionMatrix(as.factor(RF_predict), as.factor(set_test$classe))
+```
+
+```{R}
+## Choose one which is better one
+## Decision Tree Model: 0.6618
+## Random Forest: 0.9997
+predict(RF_fit, newdata=org_test)
+```
+
